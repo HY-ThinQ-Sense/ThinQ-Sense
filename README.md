@@ -1,219 +1,95 @@
-# ThinQ Sense — Multi-Agent Home Orchestration & 3D Digital Twin
+# LG-EYEAR — Proactive Home Orchestration & 3D Simulation
 
-**Main System Repository**
+**EYEAR: Eyes and Ears for Proactive Smart Home Orchestration through Spatial Awareness and Multi-Agent Collaboration**
 
-> A Spatially Aware Multi-Agent System for Predictive and Proactive Smart Home Orchestration
+Main integration repository for the EYEAR academic prototype (Hanyang University, Fall 2026; CSE406 / ITE351).
 
-## Overview
+> **Status:** Architecture and requirements defined; implementation status and setup instructions will be updated as components become executable. This repository does not imply official LG ThinQ ON integration or physical appliance control.
 
-This repository contains the main software system for ThinQ Sense, including the household world model, multi-agent planning engine, policy validation, simulation environment, and interactive 3D digital twin.
+## Scope
 
-The system receives structured semantic events from perception modules or simulated scenarios, maintains the current household state, predicts future conditions, and generates coordinated appliance action plans.
+1. Ingest validated, timestamped **Semantic Events** from emulated EYEAR Nodes or authored scenarios.
+2. Maintain a multi-room **Home World Model** with occupancy, identity uncertainty, activity hypotheses, appliance states, and event history.
+3. Request **role-based agents** to produce structured proposals or restrictions (initially **Cleaning** and **Activity/Quiet**).
+4. Use a **Home Orchestrator** to select/replan tasks; support an optional pretrained LLM supervisor for contextual interpretation and explanations.
+5. Enforce **deterministic policies**, device capabilities, user overrides, and safety restrictions before action execution.
+6. Send **Action Plans** to the 3D smart-home virtual-appliance adapter and receive **Action Results**.
+7. Replay multiple recorded sensor sources on a common scenario clock, with inference executed in the [AI repository](https://github.com/HY-LG-EYEAR/LG-EYEAR-ai).
 
-The prototype uses simulated appliance execution rather than controlling physical LG appliances.
-
-## Core Architecture
+## Core Pipeline
 
 ```text
-Live Sensor Adapter ----+
-                        |
-Scenario Simulator -----+--> Event Ingestion
-                                |
-                                v
-                         Home World Model
-                                |
-                                v
-                         Prediction Service
-                                |
-                                v
-                        Multi-Agent System
-                       /        |        \
-                 Cleaning    Climate    Quiet
-                   Agent      Agent     Agent
-                       \        |        /
-                                v
-                         Home Orchestrator
-                                |
-                      Optimization & Policy
-                                |
-                                v
-                          Action Planner
-                                |
-                         Virtual Actuators
-                                |
-                                v
-                       3D Smart Home Digital Twin
-                                |
-                         Execution Feedback
-                                |
-                                +----> World Model
+Live/Recorded Node Adapter ─┐
+                            ├→ Semantic Event API → World Model → Domain Agents
+3D Scenario Input ──────────┘                                    │
+                                                        Home Orchestrator
+                                                        (optional LLM)
+                                                               │
+                                                      Policy Validator
+                                                               │
+                                                      Action Plan / API
+                                                               │
+                                              3D Virtual Appliances → Feedback
 ```
 
-## Major Components
+## Initial Demonstration Scenarios
 
-### 1. Event Ingestion
+**Adaptive robot cleaning** — Choose feasible rooms based on occupancy, activity restrictions and remaining cleaning work; replan when an occupant enters an intended room.
 
-Receives and validates structured events from real perception pipelines and virtual scenario inputs.
+**Activity-aware quiet coordination** — Combine room occupancy, speech-activity signals and optionally simulated meeting status to infer a *possible* noise-sensitive situation; coordinate virtual robot-vacuum and laundry decisions. Do not treat speech alone as meeting proof.
 
-Responsibilities:
+The 3D client is an interactive execution/visualization environment, **not** a substitute for running the central decision pipeline.
 
-- Schema validation
-- Timestamp management
-- Duplicate detection
-- Event normalization
-- Source identification
-
-### 2. Home World Model
-
-Maintains household state, including:
-
-- Occupant identity and current room
-- Human posture and activity
-- Room occupancy and environmental conditions
-- Appliance status and capabilities
-- User preferences and automation policies
-- Context history and state transitions
-
-### 3. Prediction Service
-
-Estimates future household conditions such as:
-
-- Next room transitions
-- Expected room occupancy
-- Activity transitions
-- Potential task interruption windows
-
-Prediction results are represented probabilistically and are not treated as confirmed observations.
-
-### 4. Specialized Agents
-
-**Cleaning Agent**
-
-Plans adaptive robot vacuum operations according to occupancy, cleaning requirements, estimated travel costs, and user disturbance constraints.
-
-**Climate Agent**
-
-Proposes environmental adjustments based on room occupancy, activity, comfort preferences, and energy considerations.
-
-**Quiet Agent**
-
-Generates disturbance-related restrictions during sleep, meetings, and other noise-sensitive activities.
-
-**Laundry / Scheduling Agent**
-
-Schedules eligible appliance tasks while considering deadlines, device capabilities, and household constraints.
-
-### 5. Global Home Orchestrator
-
-Coordinates proposals from specialized agents.
-
-Responsibilities:
-
-- Goal prioritization
-- Conflict detection
-- Hard and soft constraint management
-- Global plan optimization
-- Dynamic replanning
-- Decision explanation
-- Action intent generation
-
-### 6. Decision Learning
-
-The project will compare several decision-making approaches:
-
-- Fixed schedules
-- Reactive rules
-- Predictive constraint optimization
-- Optional reinforcement learning policies
-
-Constraint optimization will be developed as the main planning baseline. Reinforcement learning will be evaluated as an additional learning-based method when feasible.
-
-### 7. 3D Smart Home Digital Twin
-
-An interactive 3D simulation environment visualizes:
-
-- Household rooms and connected spaces
-- Virtual occupants and activities
-- Appliance states
-- Robot vacuum movement and route replanning
-- Agent proposals and orchestration decisions
-- Execution feedback
-
-The simulation supports both live sensor events and scripted virtual scenarios through a common event interface.
-
-## Proposed Repository Structure
+## Proposed Structure
 
 ```text
 backend/
-  api/
-  contracts/
-  event_bus/
-  world_model/
-  prediction/
-  agents/
-  optimizer/
-  policy/
-  adapters/
-
+  api/                  # REST/WebSocket endpoints
+  contracts/            # SemanticEvent, WorldState, AgentProposal, ActionPlan/Result
+  event_ingestion/      # timestamp ordering, deduplication, validation
+  world_model/          # room / people / device states
+  agents/               # cleaning, quiet/activity; other roles when justified
+  orchestration/        # conflict resolution / optional LLM interface
+  policy/               # hard restrictions and capabilities
+  adapters/             # virtual appliance actions / feedback
+replay/
+  clock/                # shared replay clock
+  scenarios/            # manifests and non-sensitive scenario descriptions
 simulation/
-  scenario_generator/
-  home_environment/
-  gym_env/
-  baselines/
-  rl_training/
-
-digital-twin/
-  scenes/
-  scripts/
-  assets/
-  avatars/
-  appliances/
-
+  headless/             # deterministic scenarios / optional RL environments
+  evaluation/           # fixed-rule vs replanning comparisons
+digital-twin/           # Unity or Godot project (engine to be selected)
 tests/
   unit/
   integration/
   scenarios/
-
-configs/
-scripts/
 ```
 
-## Data Contracts
+## Shared Contracts (to be versioned)
 
-The system uses three main interfaces:
+- `SemanticEvent`: `schema_version`, `event_id`, `node_id`, `timestamp`, `room_id`, `observation_type`, `value`, `quality`.
+- `WorldState`: timestamped room, person/track, activity-hypothesis, and appliance state snapshot.
+- `AgentProposal`: proposed actions, applicability, constraints, expected effects, reason codes.
+- `ActionPlan`: selected virtual commands, preconditions, priority, traceable plan ID.
+- `ActionResult`: accepted/rejected/completed/failed, execution timestamp, failure reason.
 
-- **SemanticEvent:** Perception output describing observed occupants and spaces.
-- **WorldState / Prediction:** Current and predicted household conditions.
-- **ActionPlan / ActionResult:** Structured appliance decisions and simulated execution feedback.
+**Contract tests** must ensure sensor replay and authored scenarios enter the same pipeline.
 
-These contracts must be shared with the AI repository and the 3D client.
+## Testing and Evaluation
 
-## Core Demonstration Scenarios
+- Room occupancy and unknown-state handling
+- Proposal conflict resolution and explicit override precedence
+- Replanning after significant context change
+- Rejection of malformed events or unsupported commands
+- Perception-to-decision and decision-to-visualization latency
+- Repeatability of synchronized replay
 
-1. **Adaptive Cleaning:** Replan cleaning routes when room occupancy changes.
-2. **Predictive Sleep:** Prepare home environments using predicted activity transitions.
-3. **Quiet Home:** Coordinate multiple appliance operations during noise-sensitive activities.
-4. **Privacy Mode:** Continue limited presence-based automation when camera sensing is disabled.
+## Planned Development Stack
 
-## Evaluation
-
-The system will evaluate:
-
-- Task completion rate
-- Disturbance events
-- Constraint violations
-- Planning and replanning latency
-- Estimated energy and travel costs
-- Performance relative to fixed schedules and rule-based baselines
-
-## Development Status
-
-**Planning and early implementation.**
-
-The proposed architecture and features represent development targets, not completed functionality.
+Python / FastAPI / Pydantic for central services; MQTT or WebSocket/REST for messaging; Unity or Godot for 3D; optional OR-Tools for planning. Exact versions, hardware, costs, and design rationale will be documented in the [CSE406 Specification](https://github.com/HY-LG-EYEAR/LG-EYEAR-docs). Do not treat these choices as already implemented.
 
 ## Related Repositories
 
-- [AI & Perception](https://github.com/HY-ThinQ-Sense/ThinQ-Sense-ai)
-- [Software Engineering Documentation](https://github.com/HY-ThinQ-Sense/ThinQ-Sense-docs)
-- [AI Technical Blog](https://github.com/HY-ThinQ-Sense/ThinQ-Sense-blog)
+- [LG-EYEAR-ai](https://github.com/HY-LG-EYEAR/LG-EYEAR-ai)
+- [LG-EYEAR-docs](https://github.com/HY-LG-EYEAR/LG-EYEAR-docs)
+- [LG-EYEAR-blog](https://github.com/HY-LG-EYEAR/LG-EYEAR-blog)
